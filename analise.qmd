@@ -1,0 +1,308 @@
+---
+title: CIEPS
+author: "Fernando Náufel"
+date: now
+date-format: "DD/MM/YYYY HH:mm"
+lang: pt
+execute:
+  echo: false
+  eval: true
+  warning: true
+  error: true
+  include: true
+
+# bibliography: bibliography.bib
+
+# Português:
+# csl: universidade-do-porto-faculdade-de-engenharia-chicago-pt-crono.csl
+
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-depth: 3
+    theme:
+      - journal
+      - _custom.scss
+    link-external-icon: true
+    link-external-newwindow: true
+    link-external-filter: ^(?:http:|https:)\/\/fnaufel\.github\.io
+    df-print: paged
+    code-link: true
+    code-copy: true
+    code-tools: true
+    self-contained: true
+---
+
+{{< include _math.qmd >}}
+
+```{r setup, include=FALSE}
+source('_setup.R')
+```
+
+# Leitura e limpeza
+
+```{r}
+df_aula <- readr::read_csv(
+    'dados/aula.csv'
+) %>%
+  mutate(
+    tipo = 'aula',
+    data = NA_Date_,
+    .before = 1
+  )
+```
+
+```{r}
+df_aula
+```
+
+
+```{r}
+df_jogo <- readr::read_csv(
+  'dados/jogo.csv'
+) %>%
+  mutate(
+    tipo = 'jogo',
+    data = lubridate::mdy(data),
+    .before = 1
+  )
+```
+
+```{r}
+df_jogo
+```
+
+```{r}
+df_aula %>% names()
+df_jogo %>% names()
+```
+
+```{r}
+df <- df_aula %>%
+  bind_rows(df_jogo)
+```
+
+```{r}
+df
+```
+
+
+## Total de acertos nas duas partes
+
+```{r}
+nquestoes1 <- 16
+
+df <- df %>%
+  mutate(
+    acertos = acertos_parte1 + acertos_parte2,
+    questoes = nquestoes1 + (100 * acertos_parte2 / pct_parte2),
+    pct = 100 * acertos / questoes
+  )
+```
+
+```{r}
+df
+```
+
+
+# Visualização
+
+## Histogramas
+
+```{r}
+breaks = seq(0, 100, 10)
+df %>%
+  ggplot(aes(x = pct_parte1)) +
+  geom_histogram(breaks = breaks) +
+  scale_x_continuous(breaks = breaks) +
+  scale_y_continuous(
+    breaks = seq(0, 20, 5),
+    limits = c(NA, 20)
+  ) +
+  labs(
+    title = 'Percentual de acertos na parte 1',
+    subtitle = 'todos os participantes',
+    x = '%',
+    y = 'n'
+  )
+```
+
+```{r}
+breaks = seq(0, 100, 10)
+df %>%
+  ggplot(aes(x = pct_parte2)) +
+  geom_histogram(breaks = breaks) +
+  scale_x_continuous(breaks = breaks) +
+  scale_y_continuous(
+    breaks = seq(0, 20, 5),
+    limits = c(NA, 20)
+  ) +
+  labs(
+    title = 'Percentual de acertos na parte 2',
+    subtitle = 'todos os participantes',
+    x = '%',
+    y = 'n'
+  )
+```
+
+```{r}
+breaks = seq(0, 100, 10)
+df %>%
+  ggplot(aes(x = pct)) +
+  geom_histogram(breaks = breaks) +
+  scale_x_continuous(breaks = breaks) +
+  scale_y_continuous(
+    breaks = seq(0, 20, 5),
+    limits = c(NA, 20)
+  ) +
+  labs(
+    title = 'Percentual de acertos nas duas partes',
+    subtitle = 'todos os participantes',
+    x = '%',
+    y = 'n'
+  )
+```
+
+```{r}
+breaks = seq(0, 100, 10)
+df %>%
+  ggplot(aes(x = pct_parte1)) +
+  geom_histogram(breaks = breaks) +
+  scale_x_continuous(breaks = breaks) +
+  scale_y_continuous(
+    breaks = seq(0, 20, 5),
+    limits = c(NA, 10)
+  ) +
+  labs(
+    title = 'Percentual de acertos na parte 1',
+    subtitle = 'aula x jogo',
+    x = '%',
+    y = 'n'
+  ) +
+  facet_wrap(~tipo)
+```
+
+```{r}
+breaks = seq(0, 100, 10)
+df %>%
+  ggplot(aes(x = pct_parte2)) +
+  geom_histogram(breaks = breaks) +
+  scale_x_continuous(breaks = breaks) +
+  scale_y_continuous(
+    breaks = seq(0, 20, 5),
+    limits = c(NA, 10)
+  ) +
+  labs(
+    title = 'Percentual de acertos na parte 2',
+    subtitle = 'aula x jogo',
+    x = '%',
+    y = 'n'
+  ) +
+  facet_wrap(~tipo)
+```
+
+```{r}
+breaks = seq(0, 100, 10)
+df %>%
+  ggplot(aes(x = pct)) +
+  geom_histogram(breaks = breaks) +
+  scale_x_continuous(breaks = breaks) +
+  scale_y_continuous(
+    breaks = seq(0, 20, 5),
+    limits = c(NA, 10)
+  ) +
+  labs(
+    title = 'Percentual de acertos nas duas partes',
+    subtitle = 'aula x jogo',
+    x = '%',
+    y = 'n'
+  ) +
+  facet_wrap(~tipo)
+```
+
+
+## Boxplots
+
+```{r}
+df %>%
+  ggplot(aes(x = tipo, y = pct_parte1)) +
+  geom_boxplot() +
+  labs(
+    title = 'Percentual de acertos na parte 1',
+    subtitle = 'aula x jogo',
+    x = NULL,
+    y = '%'
+  )
+
+```
+
+```{r}
+df %>%
+  ggplot(aes(x = tipo, y = pct_parte2)) +
+  geom_boxplot() +
+  labs(
+    title = 'Percentual de acertos na parte 2',
+    subtitle = 'aula x jogo',
+    x = NULL,
+    y = '%'
+  )
+
+```
+
+```{r}
+df %>%
+  ggplot(aes(x = tipo, y = pct, fill = tipo)) +
+  geom_boxplot(show.legend = FALSE) +
+  # stat_summary(
+  #   geom = 'point',
+  #   fun = mean,
+  #   color = 'white',
+  #   shape = 'cross',
+  #   size = 5,
+  #   stroke = 1,
+  #   show.legend = FALSE
+  # ) +
+  labs(
+    title = 'Percentual de acertos nas duas partes',
+    subtitle = 'aula x jogo',
+    x = NULL,
+    y = '%'
+  )
+
+```
+
+
+# Sumário
+
+```{r}
+df %>%
+  filter(!is.nan(pct)) %>%
+  group_by(tipo) %>%
+  summarise(
+    média_p1 = mean(pct_parte1),
+    média_p2 = mean(pct_parte2),
+    média = mean(pct),
+    desvio_p1 = sd(pct_parte1),
+    desvio_p2 = sd(pct_parte2),
+    desvio = sd(pct)
+  )
+```
+
+# Teste t
+
+```{r}
+# Eliminar Nan
+df <- df %>%
+  filter(!is.nan(pct))
+```
+
+
+```{r}
+t.test(
+  df %>% filter(tipo == 'jogo') %>% pull(pct),
+  df %>% filter(tipo == 'aula') %>% pull(pct),
+  alternative = 'greater',
+  var.equal = TRUE
+)
+```
