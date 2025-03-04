@@ -142,3 +142,162 @@ Um *teste t* com $\alpha = 0{,}01$ rejeita a hipótese de nulidade com um valor-
 
 Em outras palavras: se o jogo não tivesse efeito sobre o desempenho dos participantes no teste, então uma diferença como a observada (ou maior) teria uma probabilidade muito pequena (de cerca de $`r t$p.value * 100`$%) de ocorrer.
 
+
+# Mais visualizações
+
+## Histogramas
+
+```{r}
+#| fig-height: 7
+brks_barras <- seq(0, 100, 10)
+brks_x <- seq(0, 100, 10)
+
+ggplot() +
+  geom_histogram(
+    aes(x = pct),
+    df %>% filter(tipo == 'aula'),
+    breaks = brks_barras,
+    fill = 'darkblue',
+    alpha = .8
+  ) +
+  geom_histogram(
+    aes(x = pct),
+    df %>% filter(tipo == 'jogo'),
+    breaks = brks_barras,
+    fill = 'darkred',
+    alpha = .8,
+  ) +
+  scale_x_continuous(
+    breaks = brks_x,
+    limits = c(0, 100)
+  ) +
+  scale_y_continuous(
+    breaks = seq(0, 10, 2)
+  ) +
+  facet_wrap(
+    ~ tipo,
+    ncol = 1,
+    axes = 'all'
+  ) +
+  labs(
+    x = '% acertos',
+    y = NULL,
+    title = 'Distribuições do percentual de acertos (aula versus jogo)'
+  )
+```
+
+
+# Densidades
+
+```{r}
+brks_x <- seq(0, 100, 10)
+brks_y <- seq(0, .03, .01)
+
+ggplot() +
+  geom_density(
+    aes(x = pct, color = 'aula', fill = 'aula'),
+    df %>% filter(tipo == 'aula'),
+    alpha = .5
+  ) +
+  geom_density(
+    aes(x = pct, color = 'jogo', fill = 'jogo'),
+    df %>% filter(tipo == 'jogo'),
+    alpha = .5,
+  ) +
+  scale_x_continuous(
+    breaks = brks_x,
+    limits = c(0, 100)
+  ) +
+  scale_y_continuous(
+    breaks = brks_y,
+    limits = c(0, .03),
+    labels = scales::label_number(decimal.mark = ',')
+  ) +
+  scale_color_discrete(
+    type = c('darkblue', 'darkred')
+  ) +
+  scale_fill_discrete(
+    type = c('darkblue', 'darkred')
+  ) +
+  labs(
+    x = '% acertos',
+    y = NULL,
+    fill = NULL,
+    color = NULL,
+    title = 'Densidades do percentual de acertos (aula versus jogo)'
+  )
+```
+
+
+# Pontos e barras
+
+```{r}
+t_aula <- t.test(
+  df %>% filter(tipo == 'aula') %>% pull(pct)
+)
+
+t_aula
+```
+
+```{r}
+media_aula <- t_aula$estimate
+inf_aula <- t_aula$conf.int[1]
+sup_aula <- t_aula$conf.int[2]
+```
+
+```{r}
+t_jogo <- t.test(
+  df %>% filter(tipo == 'jogo') %>% pull(pct)
+)
+
+t_jogo
+```
+
+```{r}
+media_jogo <- t_jogo$estimate
+inf_jogo <- t_jogo$conf.int[1]
+sup_jogo <- t_jogo$conf.int[2]
+```
+
+```{r}
+dot_bars <- tibble(
+  tipo = c('aula', 'jogo'),
+  media = c(media_aula, media_jogo),
+  inf = c(inf_aula, inf_jogo),
+  sup = c(sup_aula, sup_jogo)
+)
+```
+
+```{r}
+dot_bars %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(y = tipo, xmin = inf, xmax = sup, color = tipo),
+    linewidth = .5,
+    width = .2
+  ) +
+  geom_point(
+    aes(y = tipo, x = media, color = tipo),
+    size = 3
+  ) +
+  scale_x_continuous(
+    limits = c(40, 80),
+    breaks = seq(0, 100, 10)
+  ) +
+  scale_y_discrete(
+    labels = NULL,
+    breaks = NULL
+  ) +
+  scale_color_discrete(
+    type = c('darkblue', 'darkred')
+  ) +
+  labs(
+    y = NULL,
+    x = '% acertos',
+    color = NULL,
+    title = 'Médias dos percentuais de acertos (aula versus jogo)',
+    subtitle = 'com intervalos de confiança de 95%'
+  ) +
+  coord_flip()
+```
+
