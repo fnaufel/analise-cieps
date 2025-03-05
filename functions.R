@@ -8,14 +8,14 @@ ler_dados <- function(
   # Registros de aula não têm data
   df_aula <- readr::read_csv(aula) %>%
     mutate(
-      tipo = 'aula',
+      grupo = 'aula',
       data = NA_Date_,
       .before = 1
     )
     
   df_jogo <- readr::read_csv(jogo) %>%
     mutate(
-      tipo = 'jogo',
+      grupo = 'jogo',
       data = lubridate::mdy(data),
       .before = 1
     )
