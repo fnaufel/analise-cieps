@@ -50,10 +50,6 @@ library(gt)
 
 ```{r message=FALSE}
 df <- ler_dados()
-# Eliminar Nan
-df <- df %>%
-  filter(!is.nan(pct))
-
 nparticipantes <- nrow(df)
 ```
 
@@ -68,10 +64,10 @@ No sumário acima, a variável `questoes` contém a quantidade de questões (par
 
 # Análise
 
-Os participantes ($n = 61$) foram divididos em dois grupos:
+Os participantes ($n = ??$) foram divididos em dois grupos:
 
-- O grupo `aula` ($n_\text{aula} = 25$) recebeu uma aula expositiva.
-- O grupo `jogo` ($n_\text{jogo} = 36$) participou de uma sessão do jogo.
+- O grupo `aula` ($n_\text{aula} = ??$) recebeu uma aula expositiva.
+- O grupo `jogo` ($n_\text{jogo} = ??$) participou de uma sessão do jogo.
 
 Após a aula e o jogo, os participantes dos dois grupos responderam a um questionário e tiveram seus percentuais de acertos calculados. As médias e os desvios-padrão dos grupos foram:
 
@@ -118,11 +114,12 @@ ggplot() +
   facet_wrap(
     ~ grupo,
     ncol = 1,
-    axes = 'all'
+    axes = 'all',
+    axis.labels = 'all'
   ) +
   labs(
     x = '% acertos',
-    y = NULL,
+    y = 'sujeitos',
     title = 'Distribuições do percentual de acertos (aula versus jogo)'
   )
 ```
@@ -224,14 +221,15 @@ dot_bars %>%
   geom_errorbar(
     aes(y = grupo, xmin = inf, xmax = sup, color = grupo),
     linewidth = .5,
-    width = .2
+    width = .2,
+    show.legend = FALSE
   ) +
-  geom_point(
-    aes(y = grupo, x = média, color = grupo),
-    size = 3
+  geom_col(
+    aes(y = grupo, x = média, fill = grupo),
+    alpha = .5
   ) +
   scale_x_continuous(
-    limits = c(40, 80),
+    # limits = c(40, 80),
     breaks = seq(0, 100, 10)
   ) +
   scale_y_discrete(
@@ -239,6 +237,9 @@ dot_bars %>%
     breaks = NULL
   ) +
   scale_color_discrete(
+    type = c('darkblue', 'darkred')
+  ) +
+  scale_fill_discrete(
     type = c('darkblue', 'darkred')
   ) +
   labs(
