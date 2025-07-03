@@ -1,0 +1,289 @@
+---
+title: CIEPS
+author: "Fernando Náufel"
+date: now
+date-format: "DD/MM/YYYY HH:mm"
+lang: pt
+execute:
+  echo: true
+  eval: true
+  warning: true
+  error: true
+  include: true
+
+# bibliography: bibliography.bib
+
+# Português:
+# csl: universidade-do-porto-faculdade-de-engenharia-chicago-pt-crono.csl
+
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    number-depth: 3
+    theme:
+      - journal
+      - _custom.scss
+    link-external-icon: false
+    link-external-newwindow: true
+    link-external-filter: ^(?:http:|https:)\/\/fnaufel\.github\.io
+    df-print: paged
+    code-link: true
+    code-copy: true
+    code-tools: true
+    self-contained: true
+    code-links:
+      - text: Github
+        icon: file-code
+        href: https://github.com/fnaufel/analise-cieps
+---
+
+{{< include _math.qmd >}}
+
+```{r setup, include=FALSE}
+source('_setup.R')
+source('functions.R')
+library(gt)
+```
+
+# Dados
+
+```{r message=FALSE}
+df <- ler_dados()
+nparticipantes <- nrow(df)
+```
+
+Foram lidos dados de `r nparticipantes` participantes:
+
+```{r message=FALSE}
+df %>% dfSummary() %>% print(method = 'render')
+```
+
+No sumário acima, a variável `questoes` contém a quantidade de questões (parte 1 mais parte 2) respondidas pelo participante.
+
+
+# Escolher alunos
+
+- Mesma qtde de alunos em cada grupo.
+- Excluir distraídos ou não?
+
+
+## Quantos não-distraídos na aula?
+
+```{r}
+df %>% 
+  group_by(grupo) %>% 
+  count(distraido)
+```
+
+# 37 em cada grupo
+
+Obrigatoriamente, 4 dorminhocos no grupo aula.
+
+
+## Definir grupos
+
+```{r}
+n_aula <- 37
+n_jogo <- 37
+
+df <- df %>% escolher_grupos(n_aula, n_jogo)
+df_jogo <- df %>% filter(grupo == 'jogo')
+df_aula <- df %>% filter(grupo == 'aula')
+```
+
+```{r}
+df %>% dfSummary() %>% print(method = 'render')
+```
+
+```{r}
+df_jogo %>% dfSummary() %>% print(method = 'render')
+```
+
+::: {.callout-warning title="Erro em `dfSummary`"}
+
+Aparecem NAs em `pct_parte2`, mas só na tabela retornada por `dfSummary`.
+
+Alguma coisa causada por `round.digits` e valores que são dízimas.
+
+O dataframe continua correto.
+
+:::
+
+```{r}
+df_aula %>% dfSummary() %>% print(method = 'render')
+```
+
+```{r}
+df
+```
+
+
+## Histogramas
+
+```{r}
+histogramas <- df %>% gerar_histogramas()
+histograma_aula <- histogramas$aula
+histograma_jogo <- histogramas$jogo
+```
+
+```{r}
+histograma_aula
+```
+
+```{r}
+histograma_jogo
+```
+
+
+## Intervalos de confiança
+
+Para cada grupo, computamos intervalos de confiança de $95\%$ para o percentual médio de acertos, com os seguintes resultados:
+
+```{r}
+intervalos <- df %>% construir_intervalos()
+```
+
+```{r}
+intervalos %>% tabela_intervalos()
+```
+
+Graficamente:
+
+```{r}
+intervalos %>% construir_plot_intervalos()
+```
+
+
+## Teste t
+
+Para verificar se a diferença entre as médias dos percentuais de acertos é significativa, as seguintes hipóteses foram formuladas:
+
+- A *hipótese de nulidade* $H_0$ diz que a média dos percentuais de acertos no grupo `jogo` ($\mu_\text{jogo}$) é *igual* à média dos percentuais de acertos no grupo `aula` ($\mu_\text{aula}$):
+
+  $$
+  H_0 : \mu_\text{jogo} = \mu_\text{aula}
+  $$
+
+- A *hipótese alternativa* $H_A$ diz que a média dos percentuais de acertos no grupo `jogo` ($\mu_\text{jogo}$) é *maior* do que a média dos percentuais de acertos no grupo `aula` ($\mu_\text{aula}$):
+
+  $$
+  H_A : \mu_\text{jogo} > \mu_\text{aula}
+  $$
+
+```{r}
+t <- t.test(
+  df %>% filter(grupo == 'jogo') %>% pull(pct),
+  df %>% filter(grupo == 'aula') %>% pull(pct),
+  alternative = 'greater',
+  var.equal = TRUE
+)
+
+t
+```
+
+Um *teste t* com $\alpha = 0{,}01$ rejeita a hipótese de nulidade com um valor-$p$ igual a $`r t$p.value %>% fm(5)`$, mostrando que *a diferença é significativa*.
+
+Em outras palavras: se o jogo não tivesse efeito sobre o desempenho dos participantes no questionário, então uma diferença como a observada no experimento (ou maior) teria uma probabilidade muito pequena (de cerca de $`r t$p.value * 100`$%) de ocorrer.
+
+
+# 33 em cada grupo
+
+Nenhum dorminhoco.
+
+
+## Definir grupos
+
+```{r}
+n_aula <- 33
+n_jogo <- 33
+
+df <- df %>% escolher_grupos(n_aula, n_jogo)
+df_jogo <- df %>% filter(grupo == 'jogo')
+df_aula <- df %>% filter(grupo == 'aula')
+```
+
+```{r}
+df %>% dfSummary() %>% print(method = 'render')
+```
+
+```{r}
+df_jogo %>% dfSummary() %>% print(method = 'render')
+```
+
+```{r}
+df_aula %>% dfSummary() %>% print(method = 'render')
+```
+
+```{r}
+df
+```
+
+
+## Histogramas
+
+```{r}
+histogramas <- df %>% gerar_histogramas()
+histograma_aula <- histogramas$aula
+histograma_jogo <- histogramas$jogo
+```
+
+```{r}
+histograma_aula
+```
+
+```{r}
+histograma_jogo
+```
+
+
+## Intervalos de confiança
+
+Para cada grupo, computamos intervalos de confiança de $95\%$ para o percentual médio de acertos, com os seguintes resultados:
+
+```{r}
+intervalos <- df %>% construir_intervalos()
+```
+
+```{r}
+intervalos %>% tabela_intervalos()
+```
+
+Graficamente:
+
+```{r}
+intervalos %>% construir_plot_intervalos()
+```
+
+
+## Teste t
+
+Para verificar se a diferença entre as médias dos percentuais de acertos é significativa, as seguintes hipóteses foram formuladas:
+
+- A *hipótese de nulidade* $H_0$ diz que a média dos percentuais de acertos no grupo `jogo` ($\mu_\text{jogo}$) é *igual* à média dos percentuais de acertos no grupo `aula` ($\mu_\text{aula}$):
+
+  $$
+  H_0 : \mu_\text{jogo} = \mu_\text{aula}
+  $$
+
+- A *hipótese alternativa* $H_A$ diz que a média dos percentuais de acertos no grupo `jogo` ($\mu_\text{jogo}$) é *maior* do que a média dos percentuais de acertos no grupo `aula` ($\mu_\text{aula}$):
+
+  $$
+  H_A : \mu_\text{jogo} > \mu_\text{aula}
+  $$
+
+```{r}
+t <- t.test(
+  df %>% filter(grupo == 'jogo') %>% pull(pct),
+  df %>% filter(grupo == 'aula') %>% pull(pct),
+  alternative = 'greater',
+  var.equal = TRUE
+)
+
+t
+```
+
+Um *teste t* com $\alpha = 0{,}01$ rejeita a hipótese de nulidade com um valor-$p$ igual a $`r t$p.value %>% fm(5)`$, mostrando que *a diferença é significativa*.
+
+Em outras palavras: se o jogo não tivesse efeito sobre o desempenho dos participantes no questionário, então uma diferença como a observada no experimento (ou maior) teria uma probabilidade muito pequena (de cerca de $`r t$p.value * 100`$%) de ocorrer.
+

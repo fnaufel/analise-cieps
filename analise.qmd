@@ -46,34 +46,51 @@ source('functions.R')
 library(gt)
 ```
 
-# Dados
-
 ```{r message=FALSE}
 df <- ler_dados()
-nparticipantes <- nrow(df)
 ```
 
-Foram lidos dados de `r nparticipantes` participantes:
+```{r}
+n_aula <- 37
+n_jogo <- 37
 
-```{r message=FALSE}
-df %>% dfSummary() %>% print(method = 'render')
+df <- df %>% escolher_grupos(n_aula, n_jogo)
+df_jogo <- df %>% filter(grupo == 'jogo')
+df_aula <- df %>% filter(grupo == 'aula')
 ```
 
-No sumário acima, a variável `questoes` contém a quantidade de questões (parte 1 mais parte 2) respondidas pelo participante.
+```{r}
+histogramas <- df %>% gerar_histogramas()
+histograma_aula <- histogramas$aula
+histograma_jogo <- histogramas$jogo
+```
 
+```{r}
+ogivas <- df %>% gerar_ogivas()
+ogiva_aula <- ogivas$aula
+ogiva_jogo <- ogivas$jogo
+```
+
+```{r}
+intervalos <- df %>% construir_intervalos()
+tabela <- intervalos %>% tabela_intervalos()
+```
+
+```{r}
+plot_intervalos <- intervalos %>% construir_plot_intervalos()
+```
 
 # Análise
 
-Os participantes ($n = ??$) foram divididos em dois grupos:
+Os participantes ($n = `r n_aula + n_jogo`$) foram divididos em dois grupos:
 
-- O grupo `aula` ($n_\text{aula} = ??$) recebeu uma aula expositiva.
-- O grupo `jogo` ($n_\text{jogo} = ??$) participou de uma sessão do jogo.
+- O grupo `aula` ($n_\text{aula} = `r n_aula`$) recebeu uma aula expositiva.
+- O grupo `jogo` ($n_\text{jogo} = `r n_jogo`$) participou de uma sessão do jogo.
 
-Após a aula e o jogo, os participantes dos dois grupos responderam a um questionário e tiveram seus percentuais de acertos calculados. As médias e os desvios-padrão dos grupos foram:
+Após a aula e o jogo, os participantes dos dois grupos responderam a um questionário e tiveram seus percentuais de acertos calculados. As médias e os desvios-padrão dos percentuais de acertos dos grupos foram:
 
 ```{r}
 df %>%
-  filter(!is.nan(pct)) %>%
   group_by(grupo) %>%
   summarise(
     média = mean(pct) %>% round(2),
@@ -82,175 +99,52 @@ df %>%
   gt()
 ```
 
-Os histogramas abaixo mostram as distribuições dos percentuais de acertos dos dois grupos. O grupo `jogo` tem mais participantes com percentuais mais altos.
+Os histogramas abaixo mostram as distribuições dos percentuais de acertos dos dois grupos:
 
 ```{r}
-#| fig-height: 7
-brks_barras <- seq(0, 100, 10)
-brks_x <- seq(0, 100, 10)
+histograma_aula
+```
 
+```{r}
+histograma_jogo
+```
+
+Observe que
+
+- No grupo `aula`, $8$ sujeitos tiveram menos de $40\%$ de acertos.
+- No grupo `jogo`, apenas $1$ sujeito teve menos de $40\%$ de acertos.
+- No grupo `aula`, apenas $12$ sujeitos tiveram $60\%$ de acertos ou mais.
+- No grupo `jogo`, $24$ sujeitos tiveram $60\%$ de acertos ou mais.
+- No grupo `aula`, a classe com mais sujeitos ($12$) foi a que teve entre $50\%$ e $60\%$ de acertos.
+- No grupo `jogo`, a classe com mais sujeitos ($10$) foi a que teve entre $80\%$ e $90\%$ de acertos.
+
+Os gráficos de frequência acumulada abaixo também permitem observar diferenças importantes:
+
+```{r}
 ggplot() +
-  geom_histogram(
-    aes(x = pct),
-    df %>% filter(grupo == 'aula'),
-    breaks = brks_barras,
-    fill = 'darkblue',
-    alpha = .8
-  ) +
-  geom_histogram(
-    aes(x = pct),
-    df %>% filter(grupo == 'jogo'),
-    breaks = brks_barras,
-    fill = 'darkred',
-    alpha = .8,
-  ) +
-  scale_x_continuous(
-    breaks = brks_x,
-    limits = c(0, 100)
-  ) +
-  scale_y_continuous(
-    breaks = seq(0, 10, 2)
-  ) +
-  facet_wrap(
-    ~ grupo,
-    ncol = 1,
-    axes = 'all',
-    axis.labels = 'all'
-  ) +
-  labs(
-    x = '% acertos',
-    y = 'sujeitos',
-    title = 'Distribuições do percentual de acertos (aula versus jogo)'
-  )
+    geom_step(
+      aes(x = pct),
+      df %>% filter(grupo == 'aula'),
+      stat = 'ecdf',
+      color = 'darkblue'
+    ) +
+    scale_x_continuous(
+      breaks = brks_x,
+      limits = c(0, 100)
+    ) +
+    # scale_y_continuous(
+    #   breaks = brks_y,
+    # ) +
+    labs(
+      x = '% acertos',
+      y = '% sujeitos',
+      title = 'Frequência acumulada do percentual de acertos\n(grupo AULA)'
+    )
 ```
 
-O gráfico abaixo mostra estimativas das densidades dos percentuais de acertos dos dois grupos (basicamente, versões suavizadas dos histogramas). De novo, mais da área abaixo da curva do grupo `jogo` se concentra em percentuais mais altos.
 
-```{r}
-brks_x <- seq(0, 100, 10)
-brks_y <- seq(0, .03, .01)
 
-ggplot() +
-  geom_density(
-    aes(x = pct, color = 'aula', fill = 'aula'),
-    df %>% filter(grupo == 'aula'),
-    alpha = .5
-  ) +
-  geom_density(
-    aes(x = pct, color = 'jogo', fill = 'jogo'),
-    df %>% filter(grupo == 'jogo'),
-    alpha = .5,
-  ) +
-  scale_x_continuous(
-    breaks = brks_x,
-    limits = c(0, 100)
-  ) +
-  scale_y_continuous(
-    breaks = brks_y,
-    limits = c(0, .03),
-    labels = scales::label_number(decimal.mark = ',')
-  ) +
-  scale_color_discrete(
-    type = c('darkblue', 'darkred')
-  ) +
-  scale_fill_discrete(
-    type = c('darkblue', 'darkred')
-  ) +
-  labs(
-    x = '% acertos',
-    y = NULL,
-    fill = NULL,
-    color = NULL,
-    title = 'Densidades do percentual de acertos (aula versus jogo)'
-  )
-```
-
-Para cada grupo, computamos intervalos de confiança de $95\%$ para o percentual médio de acertos, com os seguintes resultados:
-
-```{r}
-t_aula <- t.test(
-  df %>% filter(grupo == 'aula') %>% pull(pct)
-)
-
-media_aula <- t_aula$estimate
-inf_aula <- t_aula$conf.int[1]
-sup_aula <- t_aula$conf.int[2]
-
-t_jogo <- t.test(
-  df %>% filter(grupo == 'jogo') %>% pull(pct)
-)
-
-media_jogo <- t_jogo$estimate
-inf_jogo <- t_jogo$conf.int[1]
-sup_jogo <- t_jogo$conf.int[2]
-
-dot_bars <- tibble(
-  grupo = c('aula', 'jogo'),
-  média = c(media_aula, media_jogo),
-  inf = c(inf_aula, inf_jogo),
-  sup = c(sup_aula, sup_jogo),
-  `margem de erro` = média - inf
-) %>% 
-  select(grupo, média, `margem de erro`, everything())
-```
-
-```{r}
-dot_bars %>% 
-  rename(
-    `limite inferior` = inf,
-    `limite superior` = sup
-  ) %>% 
-  gt() %>% 
-  fmt_number(
-    dec_mark = ',', 
-    sep_mark = '.'
-  ) %>% 
-  fmt_number(
-    `margem de erro`, 
-    dec_mark = ',', 
-    sep_mark = '.',
-    pattern = '±{x}'
-  )
-```
-
-Graficamente:
-
-```{r}
-dot_bars %>% 
-  ggplot() +
-  geom_errorbar(
-    aes(y = grupo, xmin = inf, xmax = sup, color = grupo),
-    linewidth = .5,
-    width = .2,
-    show.legend = FALSE
-  ) +
-  geom_col(
-    aes(y = grupo, x = média, fill = grupo),
-    alpha = .5
-  ) +
-  scale_x_continuous(
-    # limits = c(40, 80),
-    breaks = seq(0, 100, 10)
-  ) +
-  scale_y_discrete(
-    labels = NULL,
-    breaks = NULL
-  ) +
-  scale_color_discrete(
-    type = c('darkblue', 'darkred')
-  ) +
-  scale_fill_discrete(
-    type = c('darkblue', 'darkred')
-  ) +
-  labs(
-    y = NULL,
-    x = '% acertos',
-    color = NULL,
-    title = 'Médias dos percentuais de acertos (aula versus jogo)',
-    subtitle = 'com intervalos de confiança de 95%'
-  ) +
-  coord_flip()
-```
+## Teste t
 
 Para verificar se a diferença entre as médias dos percentuais de acertos é significativa, as seguintes hipóteses foram formuladas:
 
@@ -273,6 +167,8 @@ t <- t.test(
   alternative = 'greater',
   var.equal = TRUE
 )
+
+t
 ```
 
 Um *teste t* com $\alpha = 0{,}01$ rejeita a hipótese de nulidade com um valor-$p$ igual a $`r t$p.value %>% fm(5)`$, mostrando que *a diferença é significativa*.
