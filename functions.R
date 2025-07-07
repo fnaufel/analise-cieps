@@ -9,13 +9,13 @@ ler_dados <- function(
     aula,
     col_types = '?ccnncnnc'
   ) %>% 
-    mutate(grupo = 'aula')
+    mutate(grupo = 'AULA')
 
   df_jogo <- readr::read_csv(
     jogo,
     col_types = '?ccnncnnc'
   )  %>% 
-    mutate(grupo = 'jogo')
+    mutate(grupo = 'JOGO')
 
   # Temos um problema:
   # A quantidade de questões na parte 2 do teste para alunos do jogo varia!
@@ -56,13 +56,13 @@ escolher_grupos <- function(df, n_aula, n_jogo) {
   
   # Escolher grupo jogo (não há distraídos)
   df_jogo <- df %>% 
-    filter(grupo == 'jogo') %>% 
+    filter(grupo == 'JOGO') %>% 
     slice_sample(n = n_jogo)
   
   # Escolher grupo aula (não dorminhocos)
   df_aula <- df %>% 
     filter(
-      grupo == 'aula',
+      grupo == 'AULA',
       !distraido
     ) %>% 
     slice_sample(n = n_aula)
@@ -72,7 +72,7 @@ escolher_grupos <- function(df, n_aula, n_jogo) {
     diferenca <- n_aula - nrow(df_aula)
     df_dorminhocos <- df %>% 
       filter(
-        grupo == 'aula',
+        grupo == 'AULA',
         distraido
       ) %>% 
       slice_sample(n = diferenca)
@@ -96,7 +96,7 @@ gerar_histogramas <- function(df) {
   histograma_aula <- ggplot() +
     geom_histogram(
       aes(x = pct),
-      df %>% filter(grupo == 'aula'),
+      df %>% filter(grupo == 'AULA'),
       breaks = brks_barras,
       fill = 'darkblue',
       alpha = .8
@@ -118,7 +118,7 @@ gerar_histogramas <- function(df) {
     histograma_jogo <- ggplot() +
       geom_histogram(
         aes(x = pct),
-        df %>% filter(grupo == 'jogo'),
+        df %>% filter(grupo == 'JOGO'),
         breaks = brks_barras,
         fill = 'darkred',
         alpha = .8
@@ -147,17 +147,13 @@ gerar_histogramas <- function(df) {
 
 gerar_ogivas <- function(df) {
   
-  brks_barras <- seq(0, 100, 10)
   brks_x <- seq(0, 100, 10)
-  brks_y <- seq(0, 15, 2)
-  limite_y <- 12
-  
+
   ogiva_aula <- ggplot() +
     geom_step(
       aes(x = pct),
-      df %>% filter(grupo == 'aula'),
+      df %>% filter(grupo == 'AULA'),
       stat = 'ecdf',
-#      breaks = brks_barras,
       color = 'darkblue'
     ) +
     scale_x_continuous(
@@ -165,8 +161,7 @@ gerar_ogivas <- function(df) {
       limits = c(0, 100)
     ) +
     scale_y_continuous(
-      breaks = brks_y,
-      limits = c(NA, limite_y)
+      labels = \(y) 100 * y
     ) +
     labs(
       x = '% acertos',
@@ -174,29 +169,26 @@ gerar_ogivas <- function(df) {
       title = 'Frequência acumulada do percentual de acertos\n(grupo AULA)'
     )
  
-  ogiva_jogo <- NULL
-    # histograma_jogo <- ggplot() +
-    #   geom_histogram(
-    #     aes(x = pct),
-    #     df %>% filter(grupo == 'jogo'),
-    #     breaks = brks_barras,
-    #     fill = 'darkred',
-    #     alpha = .8
-    #   ) +
-    #   scale_x_continuous(
-    #     breaks = brks_x,
-    #     limits = c(0, 100)
-    #   ) +
-    #   scale_y_continuous(
-    #     breaks = brks_y,
-    #     limits = c(NA, limite_y)
-    #   ) +
-    #   labs(
-    #     x = '% acertos',
-    #     y = 'sujeitos',
-    #     title = 'Histograma do percentual de acertos (grupo JOGO)'
-    #   )
- 
+  ogiva_jogo <- ggplot() +
+    geom_step(
+      aes(x = pct),
+      df %>% filter(grupo == 'JOGO'),
+      stat = 'ecdf',
+      color = 'darkred'
+    ) +
+    scale_x_continuous(
+      breaks = brks_x,
+      limits = c(0, 100)
+    ) +
+    scale_y_continuous(
+      labels = \(y) 100 * y
+    ) +
+    labs(
+      x = '% acertos',
+      y = '% sujeitos',
+      title = 'Frequência acumulada do percentual de acertos\n(grupo JOGO)'
+    )
+
     list(
       aula = ogiva_aula,
       jogo = ogiva_jogo
@@ -208,7 +200,7 @@ gerar_ogivas <- function(df) {
 construir_intervalos <- function(df){
   
   t_aula <- t.test(
-    df %>% filter(grupo == 'aula') %>% pull(pct)
+    df %>% filter(grupo == 'AULA') %>% pull(pct)
   )
   
   media_aula <- t_aula$estimate
@@ -216,7 +208,7 @@ construir_intervalos <- function(df){
   sup_aula <- t_aula$conf.int[2]
   
   t_jogo <- t.test(
-    df %>% filter(grupo == 'jogo') %>% pull(pct)
+    df %>% filter(grupo == 'JOGO') %>% pull(pct)
   )
   
   media_jogo <- t_jogo$estimate
@@ -224,7 +216,7 @@ construir_intervalos <- function(df){
   sup_jogo <- t_jogo$conf.int[2]
   
   tibble(
-    grupo = c('aula', 'jogo'),
+    grupo = c('AULA', 'JOGO'),
     média = c(media_aula, media_jogo),
     inf = c(inf_aula, inf_jogo),
     sup = c(sup_aula, sup_jogo),
@@ -294,4 +286,23 @@ construir_plot_intervalos <- function(intervalos) {
     ) +
     coord_flip()
   
+}
+
+
+tab_frequencia <- function(df, g) {
+
+  df %>%
+    filter(grupo == g) %>%
+    pull(pct) %>% 
+    cut(breaks = seq(0,100, 10), right = FALSE) %>% 
+    table() %>% 
+    as.data.frame() %>% 
+    rename(
+      '% de acertos' = '.',
+      'sujeitos' = Freq
+    ) %>% 
+    gt() %>% 
+    cols_align('left', columns = 1) %>% 
+    tab_header(paste('Grupo', g))  
+    
 }

@@ -16,7 +16,8 @@ execute:
 # Português:
 # csl: universidade-do-porto-faculdade-de-engenharia-chicago-pt-crono.csl
 
-format:
+format: pdf
+  
   html:
     toc: true
     toc-depth: 3
@@ -44,6 +45,7 @@ format:
 source('_setup.R')
 source('functions.R')
 library(gt)
+library(patchwork)
 ```
 
 ```{r message=FALSE}
@@ -55,8 +57,8 @@ n_aula <- 37
 n_jogo <- 37
 
 df <- df %>% escolher_grupos(n_aula, n_jogo)
-df_jogo <- df %>% filter(grupo == 'jogo')
-df_aula <- df %>% filter(grupo == 'aula')
+df_jogo <- df %>% filter(grupo == 'JOGO')
+df_aula <- df %>% filter(grupo == 'AULA')
 ```
 
 ```{r}
@@ -82,12 +84,17 @@ plot_intervalos <- intervalos %>% construir_plot_intervalos()
 
 # Análise
 
-Os participantes ($n = `r n_aula + n_jogo`$) foram divididos em dois grupos:
+Os sujeitos ($n = `r n_aula + n_jogo`$) foram divididos em dois grupos:
 
-- O grupo `aula` ($n_\text{aula} = `r n_aula`$) recebeu uma aula expositiva.
-- O grupo `jogo` ($n_\text{jogo} = `r n_jogo`$) participou de uma sessão do jogo.
+- O grupo AULA ($n_\text{aula} = `r n_aula`$) recebeu uma aula expositiva.
+- O grupo JOGO ($n_\text{jogo} = `r n_jogo`$) participou de uma sessão do jogo.
 
-Após a aula e o jogo, os participantes dos dois grupos responderam a um questionário e tiveram seus percentuais de acertos calculados. As médias e os desvios-padrão dos percentuais de acertos dos grupos foram:
+Após a aula e o jogo, os sujeitos dos dois grupos responderam a um questionário e tiveram seus **percentuais de acertos** calculados. 
+
+
+## Médias dos percentuais de acertos
+
+As **médias** e os **desvios-padrão** dos percentuais de acertos dos grupos foram:
 
 ```{r}
 df %>%
@@ -99,62 +106,143 @@ df %>%
   gt()
 ```
 
-Os histogramas abaixo mostram as distribuições dos percentuais de acertos dos dois grupos:
+A média do grupo JOGO foi quase $13$ pontos percentuais mais alta do que a média do grupo AULA.
+
+Para cada grupo, computamos **intervalos de confiança** de $95\%$ para o percentual médio de acertos. Estes intervalos de confiança são **estimativas dos percentuais médios de acertos na população em geral**:
 
 ```{r}
-histograma_aula
+t_aula <- t.test(
+  df %>% filter(grupo == 'AULA') %>% pull(pct)
+)
+
+media_aula <- t_aula$estimate
+inf_aula <- t_aula$conf.int[1]
+sup_aula <- t_aula$conf.int[2]
+
+t_jogo <- t.test(
+  df %>% filter(grupo == 'JOGO') %>% pull(pct)
+)
+
+media_jogo <- t_jogo$estimate
+inf_jogo <- t_jogo$conf.int[1]
+sup_jogo <- t_jogo$conf.int[2]
+
+dot_bars <- tibble(
+  grupo = c('AULA', 'JOGO'),
+  média = c(media_aula, media_jogo),
+  inf = c(inf_aula, inf_jogo),
+  sup = c(sup_aula, sup_jogo),
+  `margem de erro` = média - inf
+) %>% 
+  select(grupo, média, `margem de erro`, everything())
 ```
 
 ```{r}
-histograma_jogo
+dot_bars %>% 
+  rename(
+    `limite inferior` = inf,
+    `limite superior` = sup
+  ) %>% 
+  gt() %>% 
+  fmt_number(
+    dec_mark = ',', 
+    sep_mark = '.'
+  ) %>% 
+  fmt_number(
+    `margem de erro`, 
+    dec_mark = ',', 
+    sep_mark = '.',
+    pattern = '±{x}'
+  )
+```
+
+Graficamente:
+
+```{r}
+dot_bars %>% 
+  ggplot() +
+  geom_errorbar(
+    aes(y = grupo, xmin = inf, xmax = sup, color = grupo),
+    linewidth = .5,
+    width = .2,
+    show.legend = FALSE
+  ) +
+  geom_col(
+    aes(y = grupo, x = média, fill = grupo),
+    alpha = .5,
+    show.legend = FALSE
+  ) +
+  scale_x_continuous(
+    # limits = c(40, 80),
+    breaks = seq(0, 100, 10)
+  ) +
+  scale_color_discrete(
+    type = c('darkblue', 'darkred')
+  ) +
+  scale_fill_discrete(
+    type = c('darkblue', 'darkred')
+  ) +
+  labs(
+    y = NULL,
+    x = '% acertos',
+    color = NULL,
+    title = 'Médias dos percentuais de acertos (AULA versus JOGO)',
+    subtitle = 'com intervalos de confiança de 95%'
+  ) +
+  coord_flip()
+```
+
+Observe que os intervalos de confiança não se intersectam (isto é, não têm valores em comum).
+
+
+## Distribuições de frequência
+
+A **distribuição de frequência** dos percentuais de acertos do grupo AULA foi:
+
+```{r}
+df %>% tab_frequencia('AULA')
+```
+
+A **distribuição de frequência** dos percentuais de acertos do grupo JOGO foi:
+
+```{r}
+df %>% tab_frequencia('JOGO')
+```
+
+Os **histogramas** destas distribuições, mostrados abaixo, nos permitem observar diferenças importantes entre os grupos:
+
+```{r}
+#| fig-height: 10
+histograma_aula / histograma_jogo
 ```
 
 Observe que
 
-- No grupo `aula`, $8$ sujeitos tiveram menos de $40\%$ de acertos.
-- No grupo `jogo`, apenas $1$ sujeito teve menos de $40\%$ de acertos.
-- No grupo `aula`, apenas $12$ sujeitos tiveram $60\%$ de acertos ou mais.
-- No grupo `jogo`, $24$ sujeitos tiveram $60\%$ de acertos ou mais.
-- No grupo `aula`, a classe com mais sujeitos ($12$) foi a que teve entre $50\%$ e $60\%$ de acertos.
-- No grupo `jogo`, a classe com mais sujeitos ($10$) foi a que teve entre $80\%$ e $90\%$ de acertos.
+- No grupo AULA, $8$ sujeitos tiveram menos de $40\%$ de acertos.
+- No grupo JOGO, apenas $1$ sujeito teve menos de $40\%$ de acertos.  
 
-Os gráficos de frequência acumulada abaixo também permitem observar diferenças importantes:
+Além disso,
 
-```{r}
-ggplot() +
-    geom_step(
-      aes(x = pct),
-      df %>% filter(grupo == 'aula'),
-      stat = 'ecdf',
-      color = 'darkblue'
-    ) +
-    scale_x_continuous(
-      breaks = brks_x,
-      limits = c(0, 100)
-    ) +
-    # scale_y_continuous(
-    #   breaks = brks_y,
-    # ) +
-    labs(
-      x = '% acertos',
-      y = '% sujeitos',
-      title = 'Frequência acumulada do percentual de acertos\n(grupo AULA)'
-    )
-```
+- No grupo AULA, apenas $12$ sujeitos tiveram $60\%$ de acertos ou mais.
+- No grupo JOGO, $24$ sujeitos tiveram $60\%$ de acertos ou mais.  
+
+Finalmente,
+
+- No grupo AULA, a classe com mais sujeitos ($12$) foi a que teve entre $50\%$ e $60\%$ de acertos.
+- No grupo JOGO, a classe com mais sujeitos ($10$) foi a que teve entre $80\%$ e $90\%$ de acertos.
 
 
+## Teste de hipóteses
 
-## Teste t
+Para verificar se a diferença entre as médias dos percentuais de acertos é significativa, foi realizado um **teste t** com as seguintes hipóteses:
 
-Para verificar se a diferença entre as médias dos percentuais de acertos é significativa, as seguintes hipóteses foram formuladas:
-
-- A *hipótese de nulidade* $H_0$ diz que a média dos percentuais de acertos no grupo `jogo` ($\mu_\text{jogo}$) é *igual* à média dos percentuais de acertos no grupo `aula` ($\mu_\text{aula}$):
+- A *hipótese de nulidade* $H_0$ diz que a média dos percentuais de acertos no grupo JOGO ($\mu_\text{jogo}$) é *igual* à média dos percentuais de acertos no grupo AULA ($\mu_\text{aula}$):
 
   $$
   H_0 : \mu_\text{jogo} = \mu_\text{aula}
   $$
 
-- A *hipótese alternativa* $H_A$ diz que a média dos percentuais de acertos no grupo `jogo` ($\mu_\text{jogo}$) é *maior* do que a média dos percentuais de acertos no grupo `aula` ($\mu_\text{aula}$):
+- A *hipótese alternativa* $H_A$ diz que a média dos percentuais de acertos no grupo JOGO ($\mu_\text{jogo}$) é *maior* do que a média dos percentuais de acertos no grupo AULA ($\mu_\text{aula}$):
 
   $$
   H_A : \mu_\text{jogo} > \mu_\text{aula}
@@ -162,16 +250,16 @@ Para verificar se a diferença entre as médias dos percentuais de acertos é si
 
 ```{r}
 t <- t.test(
-  df %>% filter(grupo == 'jogo') %>% pull(pct),
-  df %>% filter(grupo == 'aula') %>% pull(pct),
+  df %>% filter(grupo == 'JOGO') %>% pull(pct),
+  df %>% filter(grupo == 'AULA') %>% pull(pct),
   alternative = 'greater',
   var.equal = TRUE
 )
-
-t
 ```
 
-Um *teste t* com $\alpha = 0{,}01$ rejeita a hipótese de nulidade com um valor-$p$ igual a $`r t$p.value %>% fm(5)`$, mostrando que *a diferença é significativa*.
+O teste t, com nível de significância $\alpha = 0{,}01$, **rejeitou a hipótese de nulidade** com um valor-$p$ igual a $`r t$p.value %>% fm(5)`$, mostrando que **a diferença é significativa**.
 
-Em outras palavras: se o jogo não tivesse efeito sobre o desempenho dos participantes no questionário, então uma diferença como a observada no experimento (ou maior) teria uma probabilidade muito pequena (de cerca de $`r t$p.value * 100`$%) de ocorrer.
+Em outras palavras: 
+
+Se o jogo não tivesse efeito sobre o desempenho dos sujeitos, então uma diferença igual ou maior que a observada no experimento teria uma probabilidade muito pequena (de cerca de $`r t$p.value * 100`$%) de ocorrer.
 
