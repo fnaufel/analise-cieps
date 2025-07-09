@@ -16,8 +16,8 @@ execute:
 # Português:
 # csl: universidade-do-porto-faculdade-de-engenharia-chicago-pt-crono.csl
 
-format: pdf
-  
+format: 
+  docx : {}
   html:
     toc: true
     toc-depth: 3
@@ -65,12 +65,6 @@ df_aula <- df %>% filter(grupo == 'AULA')
 histogramas <- df %>% gerar_histogramas()
 histograma_aula <- histogramas$aula
 histograma_jogo <- histogramas$jogo
-```
-
-```{r}
-ogivas <- df %>% gerar_ogivas()
-ogiva_aula <- ogivas$aula
-ogiva_jogo <- ogivas$jogo
 ```
 
 ```{r}
@@ -197,19 +191,28 @@ Observe que os intervalos de confiança não se intersectam (isto é, não têm 
 
 ## Distribuições de frequência
 
-A **distribuição de frequência** dos percentuais de acertos do grupo AULA foi:
+As **distribuições de frequência** dos percentuais de acertos dos dois grupos são mostradas abaixo. Cada linha contém o número de sujeitos que obtiveram percentual de acertos entre o limite inferior (inclusive) e o limite superior (exclusive), Por exemplo, a linha [20, 30) contém a quantidade de sujeitos que obtiveram entre $20\%$ (inclusive) e $30\%$ (exclusive) de acertos.
+
+:::: {.columns}
+
+::: {.column}
 
 ```{r}
 df %>% tab_frequencia('AULA')
 ```
+:::
 
-A **distribuição de frequência** dos percentuais de acertos do grupo JOGO foi:
+::: {.column}
 
 ```{r}
 df %>% tab_frequencia('JOGO')
 ```
 
-Os **histogramas** destas distribuições, mostrados abaixo, nos permitem observar diferenças importantes entre os grupos:
+:::
+
+::::
+
+Os **histogramas** destas distribuições, mostrados abaixo, nos permitem notar diferenças importantes entre os grupos:
 
 ```{r}
 #| fig-height: 10
@@ -261,5 +264,108 @@ O teste t, com nível de significância $\alpha = 0{,}01$, **rejeitou a hipótes
 
 Em outras palavras: 
 
-Se o jogo não tivesse efeito sobre o desempenho dos sujeitos, então uma diferença igual ou maior que a observada no experimento teria uma probabilidade muito pequena (de cerca de $`r t$p.value * 100`$%) de ocorrer.
+**Se o jogo não tivesse efeito sobre o desempenho dos sujeitos, então uma diferença igual ou maior que a observada no experimento teria uma probabilidade extremamente pequena (de cerca de $`r t$p.value * 100`$%) de ocorrer.**
+
+
+## Engajamento
+
+Uma diferença importante entre os grupos foi o nível de engajamento dos sujeitos. No grupo JOGO, todos os sujeitos participaram efetivamente das atividades. No grupo AULA, $4$ sujeitos deixaram de prestar atenção à exposição, preferindo manipular seus celulares ou mesmo fechar os olhos. Isto, por si só, já é um indício da natureza mais envolvente do jogo, em comparação com o caráter mais passivo (para o sujeito) da aula.
+
+Os $4$ sujeitos "distraídos" do grupo AULA obtiveram os seguintes percentuais de acertos:
+
+```{r}
+df_aula %>% 
+  filter(distraido) %>% 
+  select(pct) %>% 
+  arrange(pct) %>% 
+  transmute(
+    '% acertos' = pct %>% round(2)
+  ) %>% 
+  gt() %>% 
+  grand_summary_rows(
+    fns = média ~ mean(.)
+  ) %>% 
+  tab_style(
+    cell_text(align = 'right'),
+    cells_grand_summary()
+  )
+```
+
+O jogo continua sendo superior à aula mesmo quando estes $4$ sujeitos distraídos são eliminados da análise, como mostra a tabela abaixo:
+
+```{r}
+df_aula_2 <- df_aula %>% filter(!distraido)
+
+nomes_linhas <- c(
+  'quantidade de sujeitos',
+  '% médio de acertos',
+  'desvio-padrão'
+)
+
+col_jogo <- c(
+  nrow(df_jogo) %>% round(0),
+  mean(df_jogo$pct) %>% round(2),
+  sd(df_jogo$pct) %>% round(2)
+)
+
+col_aula_1 <- c(
+  nrow(df_aula),
+  mean(df_aula$pct) %>% round(2),
+  sd(df_aula$pct) %>% round(2)
+)
+
+col_aula_2 <- c(
+  nrow(df_aula_2),
+  mean(df_aula_2$pct) %>% round(2),
+  sd(df_aula_2$pct) %>% round(2)
+)
+
+df_comparacao <- tibble(
+  nomes_linhas,
+  'JOGO' = col_jogo,
+  'AULA (todos)' = col_aula_1,
+  'AULA (sem distraídos)' = col_aula_2
+)
+```
+
+```{r}
+df_comparacao %>% 
+  gt() %>% 
+  cols_label(nomes_linhas ~ '') %>% 
+  fmt_integer(rows = 1)
+```
+
+Observe que, sem os sujeitos distraídos:
+
+- O percentual médio de acertos do grupo AULA aumenta cerca de $1$ ponto percentual, apenas.
+- O desvio-padrão diminui menos de $0{,}5$ ponto percentual.
+
+No teste de hipóteses sem os alunos distraídos, o valor-$p$ continua sendo baixo o suficiente para mostrar que a diferença entre o jogo e a aula é estatisticamente significativa, com $\alpha = 0{,}01$:
+
+```{r}
+t2 <- t.test(
+  df %>% filter(grupo == 'JOGO') %>% pull(pct),
+  df %>% filter(grupo == 'AULA', !distraido) %>% pull(pct),
+  alternative = 'greater',
+  var.equal = TRUE
+)
+
+
+```
+
+```{r}
+df_t <- tibble(
+  nomes_linhas = c(
+    'valor-p'
+  ),
+  'JOGO x AULA (todos)' = t$p.value %>% round(5),
+  'JOGO x AULA (sem distraídos)' = t2$p.value %>% round(5)
+)
+```
+
+```{r}
+df_t %>% 
+  gt() %>% 
+  cols_label(nomes_linhas ~ '')
+```
 
